@@ -1,0 +1,9 @@
+run_at,check,status,value,detail
+2026-11-16T15:00:43,no_response,OK,0,aucune candidature en attente depuis plus de 10 jours
+2026-11-16T15:00:43,stale_offers,ALERT,13,offres recuperees il y a 13 jour(s)
+2026-11-16T15:00:43,sources_down,ALERT,2,"sources en echec : france_travail, zip_recruiter"
+2026-11-16T15:00:43,unapplied_targets,ALERT,7,"bonnes offres sans candidature : Efinor, ABB, Orange, Sogeclair, Orange, Groupe Talents Handicap, Air France"
+2026-11-16T15:12:14,no_response,OK,0,aucune candidature en attente depuis plus de 10 jours
+2026-11-16T15:12:14,stale_offers,OK,0,offres recuperees il y a 0 jour(s)
+2026-11-16T15:12:14,sources_down,ALERT,2,"sources en echec : france_travail, zip_recruiter"
+2026-11-16T15:12:14,unapplied_targets,ALERT,7,"bonnes offres sans candidature : Efinor, ABB, Orange, Sogeclair, Orange, Groupe Talents Handicap, Air France"

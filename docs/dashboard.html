@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Internship Match — tableau de bord</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6; --series-2: #eb6834;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+      --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5; --series-2: #d95926;
+    }
+  }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1050px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.1rem; margin: 2.2rem 0 .3rem; }
+  h3 { font-size: .95rem; margin: 1.4rem 0 .3rem; }
+  .why { color: var(--ink-2); font-size: .85rem; margin: 0 0 .6rem; max-width: 75ch; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; margin: .8rem 0; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .7rem .9rem; }
+  .tile .v { font-size: 1.6rem; font-weight: 600; }
+  .tile .l { font-size: .8rem; color: var(--ink-2); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .8rem; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .badge { display: inline-block; font-size: .72rem; padding: 0 .4rem; border-radius: 4px; border: 1px solid var(--series-2); color: var(--ink); }
+  .status { font-weight: 600; white-space: nowrap; }
+  .ok::before { content: "✓ "; color: var(--good); }
+  .alert::before { content: "⚠ "; color: var(--critical); }
+  a { color: var(--series-1); }
+  .note { font-size: .8rem; color: var(--muted); }
+  canvas { max-height: 320px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Où postuler en priorité, et quoi apprendre ?</h1>
+  <p class="why">Pour : moi, pendant ma recherche de stage de 6 mois. Décision soutenue : choisir les offres auxquelles postuler cette semaine (correspondance avec mes compétences, avec un bonus pour l'IA), et repérer les compétences qui me manquent le plus souvent. Données personnelles : consulté uniquement en local (dépôt privé).</p>
+  <p class="note" id="generated"></p>
+
+  <h2>1. Efficacité de la recherche</h2>
+  <div class="tiles" id="searchTiles"></div>
+
+  <h3>Classement des offres (tableau, pas un graphique)</h3>
+  <p class="why">Je vais agir offre par offre (postuler, adapter ma lettre) : il me faut le nom exact, le score exact et ce qui me manque, pas une estimation visuelle. Trié par priorité = score de correspondance + bonus IA ; le score pur reste affiché à côté pour ne pas mélanger « je corresponds » et « ça m'intéresse ».</p>
+  <div class="card scroll"><table id="offersTable"></table></div>
+  <p class="note" id="unscoredNote"></p>
+
+  <h3>Compétences qui me manquent le plus souvent (barres horizontales triées)</h3>
+  <p class="why">Question : quoi apprendre en premier ? C'est un classement de fréquences entre catégories : une barre triée se lit d'un coup d'œil (un camembert comparerait mal autant de parts proches). Horizontal parce que les noms de compétences sont longs.</p>
+  <div class="card"><canvas id="gapsChart"></canvas></div>
+
+  <h2>2. Santé du pipeline</h2>
+  <div class="tiles" id="healthTiles"></div>
+  <h3>Sources (dernière exécution)</h3>
+  <p class="why">Un tableau d'état : chaque source est soit OK soit en échec, avec la raison ; il n'y a pas de grandeur à comparer visuellement.</p>
+  <div class="card scroll"><table id="sourcesTable"></table></div>
+  <h3>Erreurs de l'IA relevées en relisant l'extraction (human-in-the-loop)</h3>
+  <p class="why">Chaque ligne est une erreur vérifiée à la main contre le texte d'origine de l'offre.</p>
+  <div class="card scroll"><table id="reviewTable"></table></div>
+
+  <h2>3. Résultats de mes candidatures</h2>
+  <div class="tiles" id="outcomeTiles"></div>
+  <p class="why">Pas seulement « plus de candidatures, plus vite » : le taux de réponse et les candidatures sans réponse disent si ma recherche est bien ciblée. Je remplis <code>data/tracker/applications.csv</code> moi-même (statuts : envoyee, entretien, refus, acceptee).</p>
+  <div class="card scroll"><table id="appsTable"></table></div>
+
+  <h2>4. Surveillance</h2>
+  <p class="why">Résultat des vérifications automatiques de <code>scripts/monitor.py</code> (relance sans réponse, offres périmées, sources en panne, bonnes offres non traitées), une ligne par vérification et par exécution.</p>
+  <div class="card scroll"><table id="monitorTable"></table></div>
+</main>
+
+<script>
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { field += '"'; i++; } else if (c === '"') q = false; else field += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+    else field += c;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const [head, ...body] = rows.filter(r => r.some(v => v !== ''));
+  return body.map(r => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
+}
+const getJSON = p => fetch(p).then(r => r.ok ? r.json() : null).catch(() => null);
+const getCSV = p => fetch(p).then(r => r.ok ? r.text() : '').then(t => t ? parseCSV(t) : []).catch(() => []);
+const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+const table = (id, head, rows) => {
+  document.getElementById(id).innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="${head.length}" class="note">Aucune donnée pour l'instant.</td></tr>`}</tbody>`;
+};
+
+Promise.all([
+  getJSON('../data/offers/matches_all_local.json'),
+  getCSV('../data/pipeline/source_log.csv'),
+  getCSV('../data/quality/extraction_review.csv'),
+  getCSV('../data/tracker/applications.csv'),
+  getCSV('../data/monitoring/monitoring_log.csv'),
+]).then(([m, sources, review, apps, monitor]) => {
+  if (!m) {
+    document.getElementById('generated').textContent = 'Impossible de charger data/offers/matches_all_local.json : lancer match_offers.py, puis ouvrir ce fichier via "python -m http.server" depuis la racine du dépôt.';
+    return;
+  }
+  document.getElementById('generated').textContent = `Classement calculé le ${m.generated_at} — ${m.n_offers} offres, bonus IA = +${m.ai_bonus} points.`;
+  const offers = m.offers, scored = offers.filter(o => o.scorable);
+
+  // 1. Search effectiveness
+  const good = scored.filter(o => o.priority >= 50).length;
+  const strength = (m.top_matched_skills || [])[0];
+  document.getElementById('searchTiles').innerHTML =
+    tile(m.n_offers, 'offres analysées') +
+    tile(m.n_ai_offers, 'offres dans mon domaine cible (IA)') +
+    tile(good, 'bonnes offres (priorité ≥ 50)') +
+    tile(strength ? `${esc(strength.skill)}` : '—', strength ? `mon atout le plus demandé (${strength.count} offres, niveau ${strength.level}/5)` : 'mon atout le plus demandé');
+
+  table('offersTable', ['#', 'Priorité', 'Score', 'Offre', 'Atouts', 'Manque'],
+    scored.map((o, i) => `<tr><td class="num">${i + 1}</td><td class="num"><strong>${o.priority.toFixed(0)}</strong></td><td class="num">${o.score.toFixed(0)}</td>
+      <td>${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>` : esc(o.title)}<br><span class="note">${esc(o.company)} · ${esc(o.location)}</span> ${o.is_ai_offer ? '<span class="badge">IA</span>' : ''}</td>
+      <td>${esc(o.matched.join(', ')) || '—'}</td><td>${esc(o.gaps.join(', ')) || '—'}</td></tr>`));
+  document.getElementById('unscoredNote').textContent = m.n_unscored
+    ? `${m.n_unscored} offre(s) mise(s) à part : aucune compétence extraite, à lire à la main.` : 'Aucune offre mise à part (toutes ont des compétences extraites).';
+
+  const gaps = (m.top_skill_gaps || []).slice(0, 10);
+  new Chart(document.getElementById('gapsChart'), {
+    type: 'bar',
+    data: { labels: gaps.map(g => g.skill), datasets: [{ label: "Nombre d'offres", data: gaps.map(g => g.count), backgroundColor: css('--series-1'), borderRadius: 4, barPercentage: 0.7 }] },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `demandée dans ${c.parsed.x} offre(s)` } } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0, color: css('--muted') }, grid: { color: css('--grid') }, title: { display: true, text: "Nombre d'offres qui la demandent", color: css('--ink-2') } },
+                y: { ticks: { color: css('--ink-2') }, grid: { display: false } } },
+    },
+  });
+
+  // 2. Pipeline health
+  const last = {}; sources.forEach(s => { last[s.source] = s; });
+  const srcs = Object.values(last);
+  const okSrc = srcs.filter(s => s.status === 'ok').length;
+  const raw = srcs.reduce((a, s) => a + (+s.n_raw || 0), 0), kept = srcs.reduce((a, s) => a + (+s.n_kept || 0), 0);
+  document.getElementById('healthTiles').innerHTML =
+    tile(`${okSrc}/${srcs.length}`, 'sources disponibles') +
+    tile(raw ? `${Math.round(100 * kept / raw)} %` : '—', `résultats qui sont vraiment des stages (${kept}/${raw})`) +
+    tile(review.length, `erreurs de l'IA relevées sur ${m.n_offers} offres`) +
+    tile(m.n_offers_with_compensation, 'offres où l\'IA a cru voir un salaire (à vérifier)');
+  table('sourcesTable', ['Date', 'Source', 'État', 'Résultats', 'Gardés', 'Remarque'],
+    srcs.map(s => `<tr><td>${esc(s.date)}</td><td>${esc(s.source)}</td><td class="status ${s.status === 'ok' ? 'ok' : 'alert'}">${s.status === 'ok' ? 'OK' : 'En échec'}</td><td class="num">${esc(s.n_raw)}</td><td class="num">${esc(s.n_kept)}</td><td>${esc(s.notes)}</td></tr>`));
+  table('reviewTable', ['Entreprise', 'Champ', 'Valeur extraite', 'Type d\'erreur', 'Explication'],
+    review.map(r => `<tr><td>${esc(r.company)}</td><td>${esc(r.field)}</td><td>${esc(r.extracted_value)}</td><td>${esc(r.verdict)}</td><td>${esc(r.explanation)}</td></tr>`));
+
+  // 3. Outcomes
+  const sent = apps.filter(a => a.date_sent);
+  const answered = sent.filter(a => a.response_date);
+  const today = new Date();
+  const waiting = sent.filter(a => !a.response_date && (today - new Date(a.date_sent)) / 864e5 > 10);
+  document.getElementById('outcomeTiles').innerHTML =
+    tile(sent.length, 'candidatures envoyées') +
+    tile(sent.length ? `${Math.round(100 * answered.length / sent.length)} %` : '—', 'taux de réponse') +
+    tile(waiting.length, 'sans réponse depuis plus de 10 jours') +
+    tile(apps.filter(a => a.status === 'entretien').length, 'entretiens obtenus');
+  table('appsTable', ['Entreprise', 'Offre', 'Statut', 'Envoyée le', 'Réponse le', 'Notes'],
+    apps.map(a => `<tr><td>${esc(a.company)}</td><td>${esc(a.title)}</td><td>${esc(a.status)}</td><td>${esc(a.date_sent)}</td><td>${esc(a.response_date)}</td><td>${esc(a.notes)}</td></tr>`));
+
+  // 4. Monitoring
+  table('monitorTable', ['Exécution', 'Vérification', 'État', 'Valeur', 'Détail'],
+    monitor.slice().reverse().map(r => `<tr><td>${esc(r.run_at)}</td><td>${esc(r.check)}</td><td class="status ${r.status === 'OK' ? 'ok' : 'alert'}">${esc(r.status)}</td><td class="num">${esc(r.value)}</td><td>${esc(r.detail)}</td></tr>`));
+});
+</script>
+</body>
+</html>

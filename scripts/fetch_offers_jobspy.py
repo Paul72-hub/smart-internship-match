@@ -1,4 +1,4 @@
-import json, os, time
+import csv, json, os, time
 import pandas as pd
 from jobspy import scrape_jobs
 
@@ -58,6 +58,22 @@ def main():
         json.dump({"fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                    "offers": offers}, f, indent=2, ensure_ascii=False)
     print(f"Wrote data/offers/jobspy_offers.json ({len(offers)} offers) -- gitignored, local only")
+
+    # Pipeline-health log (read by monitor.py and the dashboard): one row per site
+    # per run. A site that returned nothing is recorded as an error, not skipped.
+    log_path = "data/pipeline/source_log.csv"
+    new_file = not os.path.exists(log_path)
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(["date", "source", "status", "n_raw", "n_kept", "notes"])
+        for site in SITES:
+            n_raw = int((jobs["site"] == site).sum()) if len(jobs) else 0
+            n_kept = int((interns["site"] == site).sum()) if len(interns) else 0
+            w.writerow([time.strftime("%Y-%m-%d"), site, "ok" if n_raw else "error", n_raw, n_kept,
+                        "automatic entry from fetch_offers_jobspy.py"])
+    print(f"Appended per-site counts to {log_path}")
 
 if __name__ == "__main__":
     main()

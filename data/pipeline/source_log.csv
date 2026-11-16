@@ -1,0 +1,6 @@
+date,source,status,n_raw,n_kept,notes
+2026-11-03,france_travail,down,0,0,"API France Travail indisponible"
+2026-11-03,indeed,ok,30,14,"14 offres taguees internship sur 30"
+2026-11-03,zip_recruiter,error,0,0,"HTTP 307 : site US/Canada, ne sert pas la France"
+2026-11-16,indeed,ok,30,18,automatic entry from fetch_offers_jobspy.py
+2026-11-16,zip_recruiter,error,0,0,automatic entry from fetch_offers_jobspy.py

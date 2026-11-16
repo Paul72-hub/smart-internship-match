@@ -1,0 +1,8 @@
+review_date,company,field,extracted_value,verdict,explanation
+2026-11-03,Q Energy,required_skills,Power BI,hallucination,"Power BI n'apparait nulle part dans le texte ; l'offre parle seulement de tableaux de bord"
+2026-11-03,Natixis,compensation_mentioned,60 %,wrong_value,"60 % est le remboursement du titre de transport, pas une remuneration"
+2026-11-03,Efinor,compensation_mentioned,35 heures hebdomadaires,wrong_value,"35 heures est la duree de travail, pas une remuneration"
+2026-11-03,Sogeclair,compensation_mentioned,"RTT, mutuelle, pack mobilite...",instruction_ignored,"aucun chiffre alors que le prompt exigeait un montant chiffre"
+2026-11-03,GERFLOR,required_skills,Securite des SI (x2),duplicate,"meme competence extraite deux fois avec une casse differente"
+2026-11-03,ABB,required_skills,"intelligence artificielle, data science, informatique",too_vague,"aucun outil concret extrait pour une offre IA"
+2026-11-16,Sopra Steria,cover_letter_draft,"comprendre les contraintes des systemes robotiques",overclaim,"lettre generee : aucune preuve de robotique dans mon profil, l'IA extrapole a partir des projets Arduino ; phrase a supprimer"
